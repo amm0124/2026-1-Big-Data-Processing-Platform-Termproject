@@ -57,7 +57,10 @@ def get_series(obj, key, half, offset=0, name="data"):
 
 
 # Concat 1st half, 2nd half
-def process_match(xy, possession, ballstatus):
+def process_match(xy, possession, ballstatus): 
+    # xy: raw coords
+    # possession: which team has the ball per frame
+    # ball: in play or not per frame
     df_home_1 = convert_dfl_to_df(xy, "Home", "firstHalf", 0)
     player_cols = [col for col in df_home_1.columns if col.startswith("Home_") and (col.endswith("_x") or col.endswith("_y"))]
     num_players = len(player_cols) // 2
@@ -268,11 +271,11 @@ class CustomDataset(Dataset):
 
         for match_id in tqdm(match_ids, desc="Loading Matches"):
             folder = os.path.join(data_root, match_id)
-            # CSV 로드
+            # load CSV files
             home = pd.read_csv(os.path.join(folder, "tracking_home.csv"), index_col="Frame")
             away = pd.read_csv(os.path.join(folder, "tracking_away.csv"), index_col="Frame")
             
-            # Event Data 로드
+            # Load Event Data
             events_fname = next(f for f in os.listdir(folder) if "events" in f and f.endswith(".xml"))
             info_fname = next(f for f in os.listdir(folder) if "matchinformation" in f and f.endswith(".xml"))
             events_path = os.path.join(folder, events_fname)
@@ -296,8 +299,8 @@ class CustomDataset(Dataset):
 
             self.match_player_pid_map[match_id] = pid_map
             
-            # 전처리
-            home = calc_velocites(home)
+            # Calculate velocities, correct NaNs, compute distances
+            home = calc_velocites(home) # imported function
             away = calc_velocites(away)
             home = correct_nan_velocities_and_positions(home, self.framerate)
             away = correct_nan_velocities_and_positions(away, self.framerate)
@@ -513,11 +516,11 @@ class CustomDataset(Dataset):
             rel_y_raw = abs_y_raw - ref_y_raw
 
             if self.zscore_stats is not None:
-                # 정규화 적용
+                # normalize absolute coordinates
                 abs_x_norm = (abs_x_raw - self.zscore_stats['player_x_mean']) / self.zscore_stats['player_x_std']
                 abs_y_norm = (abs_y_raw - self.zscore_stats['player_y_mean']) / self.zscore_stats['player_y_std']
                 
-                # 상대좌표 정규화 (통계가 있는 경우에만)
+                # normalize relative coordinates (if existant)
                 if 'rel_x_mean' in self.zscore_stats and 'rel_x_std' in self.zscore_stats:
                     rel_x_norm = (rel_x_raw - self.zscore_stats['rel_x_mean']) / self.zscore_stats['rel_x_std']
                     rel_y_norm = (rel_y_raw - self.zscore_stats['rel_y_mean']) / self.zscore_stats['rel_y_std']
@@ -567,7 +570,7 @@ class CustomDataset(Dataset):
 
         condition_rel = np.concatenate(condition_rel_data, axis=1)  # [T_cond, 22]
 
-        # Condition 정규화
+        # Condition normalization (if zscore_stats is provided)
         if self.zscore_stats is not None:
             condition_seq_normalized = condition_seq.copy()
             for col in condition_columns:
@@ -577,7 +580,7 @@ class CustomDataset(Dataset):
                     stat_key_mean = f"{key}_{feat}_mean"
                     stat_key_std = f"{key}_{feat}_std"
                     
-                    # 해당 통계가 존재하는 경우에만 정규화
+                    # if the statistics for this feature exist, apply normalization
                     if stat_key_mean in self.zscore_stats and stat_key_std in self.zscore_stats:
                         mean = self.zscore_stats[stat_key_mean]
                         std = self.zscore_stats[stat_key_std]
@@ -586,10 +589,10 @@ class CustomDataset(Dataset):
                     if "dist_mean" in self.zscore_stats and "dist_std" in self.zscore_stats:
                         condition_seq_normalized[col] = (condition_seq[col] - self.zscore_stats["dist_mean"]) / self.zscore_stats["dist_std"]
         else:
-            # zscore_stats가 None인 경우 원본 데이터 사용
+            # if zscore_stats is None, use original condition sequence without normalization
             condition_seq_normalized = condition_seq.copy()
             
-        # Other 정규화
+        # Other normalization
         other_array = other_seq.values.copy()
         if self.zscore_stats is not None:
             for i, col in enumerate(other_columns):
@@ -599,7 +602,7 @@ class CustomDataset(Dataset):
                     stat_key_mean = f"{key}_{feat}_mean"
                     stat_key_std = f"{key}_{feat}_std"
                     
-                    # 해당 통계가 존재하는 경우에만 정규화
+                    # if the statistics for this feature exist, apply normalization
                     if stat_key_mean in self.zscore_stats and stat_key_std in self.zscore_stats:
                         mean = self.zscore_stats[stat_key_mean]
                         std = self.zscore_stats[stat_key_std]
