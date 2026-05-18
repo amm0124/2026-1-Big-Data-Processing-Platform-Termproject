@@ -1,0 +1,65 @@
+services:
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-namenode
+    restart: unless-stopped
+    ports:
+      - "9870:9870"   # HDFS Web UI
+      - "9000:9000"   # HDFS
+    volumes:
+      - namenode_data:/hadoop/dfs/name
+    environment:
+      CLUSTER_NAME: hadoop-cluster
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HDFS_CONF_dfs_replication: 1
+      HDFS_CONF_dfs_permissions_enabled: "false"
+      HDFS_CONF_dfs_webhdfs_enabled: "true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9870"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-datanode
+    restart: unless-stopped
+    volumes:
+      - datanode_data:/hadoop/dfs/data
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HDFS_CONF_dfs_replication: 1
+      HDFS_CONF_dfs_permissions_enabled: "false"
+    depends_on:
+      - namenode
+
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-resourcemanager
+    restart: unless-stopped
+    ports:
+      - "8088:8088"   # YARN Web UI
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864"
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      YARN_CONF_yarn_resourcemanager_hostname: resourcemanager
+    depends_on:
+      - namenode
+      - datanode
+
+  nodemanager:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-nodemanager
+    restart: unless-stopped
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      YARN_CONF_yarn_resourcemanager_hostname: resourcemanager
+      YARN_CONF_yarn_nodemanager_aux___services: mapreduce_shuffle
+    depends_on:
+      - resourcemanager
+
+volumes:
+  namenode_data:
+  datanode_data:
