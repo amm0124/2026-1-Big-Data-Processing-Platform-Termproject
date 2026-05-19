@@ -82,3 +82,19 @@ X_train_fh_away = dataset['fh_away']
 X_train_fh_ball = dataset['fh_ball']
 
 print(f"Loaded Home Team (First Half) Shape: {X_train_fh_home.shape}")
+```
+
+## Start
+
+```
+cd hadoop && docker compose up -d
+```
+
+## Folder Structure
+
+| Folder | Description |
+|---|---|
+| `report/` | 제출물 (IEEE 2 columns) |
+| `ablation/` | BiLSTM 기반 reconstruction 실험 |
+| `hadoop/` | Cluster configuration (docker-compose.yml) |
+| `data/` | Elite soccer tracking data (DFL) |
