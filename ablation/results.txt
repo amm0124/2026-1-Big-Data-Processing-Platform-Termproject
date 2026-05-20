@@ -1,0 +1,6 @@
+Test samples: 2373255
+
+Method                   RMSE (m)  Fréchet (m)
+----------------------------------------------
+Linear Interpolation       0.0732       0.0069
+LSTM (BiLSTM)              0.1108       0.0308

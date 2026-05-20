@@ -1,3 +1,5 @@
 data/
 venv/
+.venv/
 .claude
+ablation/processed/
